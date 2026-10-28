@@ -1,0 +1,26 @@
+$ pyang --version
+pyang 2.7.1
+
+$ pyang models/site-service.yang
+exit code: 0  (no output = no errors or warnings)
+
+$ pyang -f tree models/site-service.yang
+module: site-service
+  +--rw network
+  |  +--rw device* [name]
+  |     +--rw name        string
+  |     +--rw platform?   enumeration
+  +--rw site-service* [name]
+     +--rw name                    string
+     +--rw customer                string
+     +--rw device                  -> /network/device/name
+     +--rw vlan-id                 uint16
+     +--rw vlan-name?              string
+     +--rw gateway                 ss:ipv4-address
+     +--rw subnet-prefix-length?   uint8
+     +--rw enabled?                boolean
+     +--rw static-route* [destination-prefix]
+        +--rw destination-prefix    ss:ipv4-address
+        +--rw prefix-length?        uint8
+        +--rw next-hop              ss:ipv4-address
+        +--rw description?          string

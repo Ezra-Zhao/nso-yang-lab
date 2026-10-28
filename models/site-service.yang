@@ -1,0 +1,161 @@
+module site-service {
+  yang-version 1.1;
+  namespace "urn:example:nso-yang-lab:site-service";
+  prefix ss;
+
+  organization
+    "nso-yang-lab (local proof-of-concept)";
+  contact
+    "Local lab only - no production use.";
+  description
+    "Simplified site service model in the style of a Cisco NSO service
+     model. A service instance describes one site VLAN with an SVI
+     gateway and zero or more static routes on one target device.
+
+     HONESTY NOTE: This is an NSO-style model written for a local
+     proof-of-concept. It has NOT been loaded into a real Cisco NSO
+     instance and is not a production NSO package.";
+
+  revision 2026-10-27 {
+    description
+      "Initial version: device inventory (for leafref targets) and a
+       site-service list with VLAN, gateway and static routes.";
+  }
+
+  typedef ipv4-address {
+    type string {
+      pattern
+        '(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}'
+      + '([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])';
+    }
+    description
+      "Dotted-quad IPv4 address. Defined locally so this module is
+       self-contained and validates with pyang without external
+       imports (a production model would normally import
+       ietf-inet-types and use inet:ipv4-address).";
+  }
+
+  container network {
+    description
+      "Device inventory. In real NSO this role is played by the
+       built-in /devices/device list populated from NEDs; here it is
+       a minimal local stand-in so leafref can be demonstrated.";
+
+    list device {
+      key "name";
+      description "One managed (simulated) device.";
+
+      leaf name {
+        type string;
+        description "Device hostname, e.g. R1.";
+      }
+
+      leaf platform {
+        type enumeration {
+          enum ios;
+          enum ios-xe;
+        }
+        default "ios-xe";
+        description
+          "Device platform family. In real NSO this choice is made by
+           the NED loaded for the device, not by the service model.";
+      }
+    }
+  }
+
+  list site-service {
+    key "name";
+    description
+      "One site service instance: a VLAN + SVI gateway + static
+       routes to be provisioned on a single target device. This is
+       the analogue of an NSO service point list entry.";
+
+    leaf name {
+      type string;
+      description "Service instance name, e.g. site-alpha.";
+    }
+
+    leaf customer {
+      type string;
+      mandatory true;
+      description "Customer / tenant that owns this service.";
+    }
+
+    leaf device {
+      type leafref {
+        path "/network/device/name";
+      }
+      mandatory true;
+      description
+        "Target device for this service. leafref into the device
+         inventory, mirroring how an NSO service references a device
+         (in real NSO usually via a device-group or /devices/device).";
+    }
+
+    leaf vlan-id {
+      type uint16 {
+        range "1..4094";
+      }
+      mandatory true;
+      description "802.1Q VLAN ID for the site segment.";
+    }
+
+    leaf vlan-name {
+      type string;
+      description
+        "Optional VLAN name. If omitted, the renderer derives one
+         from the customer name.";
+    }
+
+    leaf gateway {
+      type ss:ipv4-address;
+      mandatory true;
+      description "SVI gateway IPv4 address for the VLAN.";
+    }
+
+    leaf subnet-prefix-length {
+      type uint8 {
+        range "0..32";
+      }
+      default "24";
+      description "Prefix length of the site subnet.";
+    }
+
+    leaf enabled {
+      type boolean;
+      default "true";
+      description
+        "Whether the service is administratively enabled. When false,
+         the renderer emits the SVI in shutdown state.";
+    }
+
+    list static-route {
+      key "destination-prefix";
+      description "Static routes belonging to this site service.";
+
+      leaf destination-prefix {
+        type ss:ipv4-address;
+        description "Destination network address.";
+      }
+
+      leaf prefix-length {
+        type uint8 {
+          range "0..32";
+        }
+        default "24";
+        description "Destination prefix length.";
+      }
+
+      leaf next-hop {
+        type ss:ipv4-address;
+        mandatory true;
+        description "Next-hop IPv4 address.";
+      }
+
+      leaf description {
+        type string;
+        description "Optional free-text route description.";
+      }
+    }
+  }
+}
